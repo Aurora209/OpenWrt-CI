@@ -10,13 +10,7 @@
 name: OpenWrt
 
 on:
-  push:
-    branches: 
-      - master
-  schedule:
-    - cron: 0 0 1 * *
-  watch:
-    types: started
+  workflow_dispatch:
 
 jobs:
   build:
@@ -78,4 +72,3 @@ jobs:
         with:
           name: OpenWrt_firmware
           path: bin/targets/
-          
