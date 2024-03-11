@@ -1,35 +1,32 @@
-name: OpenWrt  # 工作流程的名称
+name: OpenWrt
 
 on:
-  workflow_dispatch:  # 手动触发工作流程
+  workflow_dispatch:
 
 jobs:
-  build:  # 工作流程中的任务
-    runs-on: ubuntu-latest  # 运行环境
-    if: github.event.repository.owner.id == github.event.sender.id  # 只有仓库所有者才能触发此工作流程
+  build:
+    runs-on: ubuntu-latest
+    if: github.event.repository.owner.id == github.event.sender.id
 
-    steps:  # 工作流程中的步骤
-      - name: Checkout  # 步骤名称
-        uses: actions/checkout@master  # 使用 GitHub Action 来检出代码
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
 
-      - name: Initialization environment  # 初始化环境
+      - name: Initialization environment
         env:
           DEBIAN_FRONTEND: noninteractive
-        run: |  # 运行命令
+        run: |
           sudo -E apt-get -yqq update
           sudo -E apt-get -yqq install build-essential asciidoc binutils bzip2 lib32gcc-s1 gawk gettext git libncurses5-dev libz-dev patch python3 unzip zlib1g-dev libc6-dev-i386 subversion flex uglifyjs git-core gcc-multilib p7zip p7zip-full msmtp libssl-dev texinfo libglib2.0-dev xmlto qemu-utils upx libelf-dev autoconf automake libtool autopoint device-tree-compiler g++-multilib
           sudo -E apt-get -y autoremove --purge
           sudo -E apt-get clean
-      - name: Download lede  # 下载 lede
+
+      - name: Setup lede and Install packages
         run: |
           git clone https://github.com/coolsnowwolf/lede
           cp .config ./lede/.config
           mv ./lede/* ./
-      - name: Install Helloword  # 安装 Helloword
-        run: |
           echo "src-git helloworld https://github.com/fw876/helloworld" >> ./feeds.conf.default 
-      - name: Install OpenClash  # 安装 OpenClash
-        run: |
           mkdir package/luci-app-openclash
           cd package/luci-app-openclash
           git init
@@ -41,23 +38,24 @@ jobs:
           pushd luci-app-openclash/tools/po2lmo
           make && sudo make install
           popd
-      - name: Update feeds  # 更新 feeds
-        run: |
           ./scripts/feeds update -a
           ./scripts/feeds install -a
-      - name: Costom configure file  # 自定义配置文件
+          # Clean up unnecessary files
+          sudo rm -rf ./lede
+          sudo rm -rf ./package/luci-app-openclash
+
+      - name: Build firmware
         run: |
           make defconfig
-      - name: Download package source code  # 下载包源代码
-        run: |
           make download -j8
           find dl -size -1024c -exec ls -l {} \;
           find dl -size -1024c -exec rm -f {} \;
-      - name: Compile firmware  # 编译固件
-        run: |
           echo -e "$(nproc) thread build."
           make -j$(nproc) V=s
-      - name : Upload artifact  # 上传构建产物
+          # Clean up unnecessary files
+          sudo rm -rf ./dl
+
+      - name : Upload artifact
         uses: actions/upload-artifact@master
         with:
           name: OpenWrt_firmware
