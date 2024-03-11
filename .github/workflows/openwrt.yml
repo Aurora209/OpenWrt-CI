@@ -1,49 +1,34 @@
-#
-# This is free software, lisence use MIT.
-# 
-# Copyright (C) 2019 P3TERX <https://p3terx.com>
-# Copyright (C) 2020 KFERMercer <KFER.Mercer@gmail.com>
-# 
-# <https://github.com/KFERMercer/OpenWrt-CI>
-#
-
-name: OpenWrt
+name: OpenWrt  # 工作流程的名称
 
 on:
-  push:
-    branches: 
-      - master
-  schedule:
-    - cron: 0 0 1 * *
-  watch:
-    types: started
+  workflow_dispatch:  # 手动触发工作流程
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    if: github.event.repository.owner.id == github.event.sender.id
+  build:  # 工作流程中的任务
+    runs-on: ubuntu-latest  # 运行环境
+    if: github.event.repository.owner.id == github.event.sender.id  # 只有仓库所有者才能触发此工作流程
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@master
+    steps:  # 工作流程中的步骤
+      - name: Checkout  # 步骤名称
+        uses: actions/checkout@master  # 使用 GitHub Action 来检出代码
 
-      - name: Initialization environment
+      - name: Initialization environment  # 初始化环境
         env:
           DEBIAN_FRONTEND: noninteractive
-        run: |
+        run: |  # 运行命令
           sudo -E apt-get -yqq update
           sudo -E apt-get -yqq install build-essential asciidoc binutils bzip2 lib32gcc-s1 gawk gettext git libncurses5-dev libz-dev patch python3 unzip zlib1g-dev libc6-dev-i386 subversion flex uglifyjs git-core gcc-multilib p7zip p7zip-full msmtp libssl-dev texinfo libglib2.0-dev xmlto qemu-utils upx libelf-dev autoconf automake libtool autopoint device-tree-compiler g++-multilib
           sudo -E apt-get -y autoremove --purge
           sudo -E apt-get clean
-      - name: Download lede
+      - name: Download lede  # 下载 lede
         run: |
           git clone https://github.com/coolsnowwolf/lede
           cp .config ./lede/.config
           mv ./lede/* ./
-      - name: Install Helloword
+      - name: Install Helloword  # 安装 Helloword
         run: |
           echo "src-git helloworld https://github.com/fw876/helloworld" >> ./feeds.conf.default 
-      - name: Install OpenClash
+      - name: Install OpenClash  # 安装 OpenClash
         run: |
           mkdir package/luci-app-openclash
           cd package/luci-app-openclash
@@ -56,25 +41,24 @@ jobs:
           pushd luci-app-openclash/tools/po2lmo
           make && sudo make install
           popd
-      - name: Update feeds
+      - name: Update feeds  # 更新 feeds
         run: |
           ./scripts/feeds update -a
           ./scripts/feeds install -a
-      - name: Costom configure file
+      - name: Costom configure file  # 自定义配置文件
         run: |
           make defconfig
-      - name: Download package source code
+      - name: Download package source code  # 下载包源代码
         run: |
           make download -j8
           find dl -size -1024c -exec ls -l {} \;
           find dl -size -1024c -exec rm -f {} \;
-      - name: Compile firmware
+      - name: Compile firmware  # 编译固件
         run: |
           echo -e "$(nproc) thread build."
           make -j$(nproc) V=s
-      - name : Upload artifact
+      - name : Upload artifact  # 上传构建产物
         uses: actions/upload-artifact@master
         with:
           name: OpenWrt_firmware
           path: bin/targets/
-          
